@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMD Rainfall Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0c1018;
+    --bg2: #131925;
+    --bg3: #1a2235;
+    --border: #253044;
+    --text: #d6dce8;
+    --text2: #8494ad;
+    --text3: #506080;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+    --purple: #8b5cf6;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  header .title-area {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  header .badge {
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  header h1 span { color: var(--text2); font-weight: 400; }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .upload-btn, .export-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+
+  .upload-btn {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
+
+  .upload-btn:hover { background: var(--blue2); }
+
+  .export-btn {
+    background: var(--bg3);
+    color: var(--text);
+  }
+
+  .export-btn:hover { background: var(--border); }
+
+  .demo-btn {
+    background: var(--bg3);
+    color: var(--yellow);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .demo-btn:hover { background: rgba(245, 158, 11, 0.1); }
+
+  select {
+    padding: 8px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .main {
+    padding: 24px 28px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .stat .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .stat .value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .stat .value.blue { color: var(--blue2); }
+  .stat .value.green { color: var(--green); }
+  .stat .value.yellow { color: var(--yellow); }
+  .stat .value.cyan { color: var(--cyan); }
+  .stat .value.purple { color: var(--purple); }
+
+  /* Chart grid */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .chart-card.full { grid-column: 1 / -1; }
+
+  .chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 260px !important;
+    display: block;
+  }
+
+  canvas.tall { height: 320px !important; }
+
+  /* Table */
+  .table-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    background: var(--bg3);
+    color: var(--text2);
+    font-weight: 600;
+    padding: 10px 14px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(37, 48, 68, 0.5);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  tr:hover td { background: rgba(59, 130, 246, 0.04); }
+
+  .empty-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+    font-size: 15px;
+  }
+
+  .empty-msg .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+
+  input[type="file"] { display: none; }
+
+  @media (max-width: 800px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-area">
+    <div class="badge">BMD</div>
+    <h1>Rainfall Dashboard <span>— 3-Hourly Analysis</span></h1>
+  </div>
+  <div class="controls">
+    <select id="stationFilter">
+      <option value="all">All Stations</option>
+    </select>
+    <select id="yearFilter">
+      <option value="all">All Years</option>
+    </select>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      📂 Load CSV/Excel
+    </button>
+    <button class="upload-btn demo-btn" onclick="loadDemo()">▶ Demo Data</button>
+    <button class="export-btn" onclick="exportXLSX()" id="exportBtn" style="display:none">
+      ⬇ Export XLSX
+    </button>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+  </div>
+</header>
+
+<div class="main">
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat"><div class="label">Total Records</div><div class="value blue" id="sTotalRec">—</div></div>
+    <div class="stat"><div class="label">Stations</div><div class="value cyan" id="sStations">—</div></div>
+    <div class="stat"><div class="label">Date Range</div><div class="value green" id="sDateRange">—</div></div>
+    <div class="stat"><div class="label">Total Rainfall</div><div class="value yellow" id="sTotalRain">—</div></div>
+    <div class="stat"><div class="label">Max 3-hr</div><div class="value purple" id="sMax3hr">—</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-grid" id="chartGrid" style="display:none">
+    <div class="chart-card full">
+      <div class="chart-title">Monthly Rainfall Distribution</div>
+      <canvas id="monthlyChart" class="tall"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Diurnal Pattern (3-Hourly Mean)</div>
+      <canvas id="diurnalChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Huff Quartile Classification</div>
+      <canvas id="huffChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Seasonal Breakdown</div>
+      <canvas id="seasonChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Annual Totals</div>
+      <canvas id="annualChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap" id="tableWrap">
+    <div class="table-header">
+      <div class="chart-title" style="margin:0">Station Summary</div>
+    </div>
+    <div class="table-scroll">
+      <div class="empty-msg" id="emptyMsg">
+        <div class="icon">🌧️</div>
+        <div>Load a BMD 3-hourly rainfall file or click <strong>Demo Data</strong> to explore.</div>
+      </div>
+      <table id="summaryTable" style="display:none">
+        <thead>
+          <tr>
+            <th>Station</th>
+            <th>Days</th>
+            <th>Total (mm)</th>
+            <th>Mean Daily (mm)</th>
+            <th>Max Daily (mm)</th>
+            <th>Max 3-hr (mm)</th>
+            <th>Rainy Days</th>
+            <th>Rainy %</th>
+          </tr>
+        </thead>
+        <tbody id="summaryBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======== State ========
+let allData = [];      // [{station, date, year, month, day, slot, hour, rainfall}, ...]
+let filteredData = [];
+const SLOTS = ['00-03','03-06','06-09','09-12','12-15','15-18','18-21','21-24'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SEASONS = { 'Pre-monsoon': [3,4,5], 'Monsoon': [6,7,8,9], 'Post-monsoon': [10,11], 'Winter': [12,1,2] };
+const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316'];
+
+// ======== File Loading ========
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    if (file.name.endsWith('.csv')) {
+      parseCSV(ev.target.result);
+    } else {
+      alert('For Excel files, please save as CSV first, or use the Python processor.');
+    }
+  };
+  reader.readAsText(file);
+});
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return;
+  const header = lines[0].split(',');
+  allData = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 10) continue;
+    const station = parts[0].trim();
+    const dateStr = parts[1].trim();
+    const dateParts = dateStr.split('-');
+    const year = parseInt(dateParts[0]);
+    const month = parseInt(dateParts[1]);
+    const day = parseInt(dateParts[2]);
+
+    for (let s = 0; s < 8; s++) {
+      const val = parseFloat(parts[s + 2]);
+      allData.push({
+        station, date: dateStr, year, month, day,
+        slot: SLOTS[s], hour: parseInt(SLOTS[s].split('-')[0]),
+        rainfall: isNaN(val) ? 0 : val
+      });
+    }
+  }
+
+  initDashboard();
+}
+
+// ======== Demo Data ========
+function loadDemo() {
+  const stations = ['Khepupara','Patuakhali','Bhola','Satkhira','Mongla','Khulna'];
+  const monthMeans = {1:5,2:10,3:20,4:55,5:100,6:250,7:300,8:280,9:220,10:120,11:30,12:8};
+  allData = [];
+
+  // Seeded random
+  let seed = 42;
+  function rand() { seed=(seed*16807)%2147483647; return (seed-1)/2147483646; }
+  function randExp(mean) { return -mean * Math.log(1 - rand()); }
+
+  const start = new Date('2019-01-01');
+  const end = new Date('2024-12-31');
+
+  for (const station of stations) {
+    const factor = 0.7 + rand() * 0.6;
+    const d = new Date(start);
+    while (d <= end) {
+      const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const dailyTotal = Math.max(0, randExp(monthMeans[month] * factor / 30));
+
+      // Front-loaded weights
+      let weights = [0.25,0.20,0.15,0.12,0.10,0.08,0.06,0.04];
+      let noise = weights.map(() => rand());
+      let noiseSum = noise.reduce((a,b) => a+b);
+      weights = weights.map((w,i) => w + noise[i]/noiseSum * 0.3);
+      let wSum = weights.reduce((a,b) => a+b);
+      weights = weights.map(w => w / wSum);
+
+      for (let s = 0; s < 8; s++) {
+        const rainfall = dailyTotal < 0.5 ? 0 : Math.round(dailyTotal * weights[s] * 10) / 10;
+        allData.push({
+          station, date: dateStr, year, month, day,
+          slot: SLOTS[s], hour: parseInt(SLOTS[s].split('-')[0]),
+          rainfall: Math.max(0, rainfall)
+        });
+      }
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  initDashboard();
+}
+
+// ======== Dashboard Init ========
+function initDashboard() {
+  // Populate filters
+  const stations = [...new Set(allData.map(d => d.station))].sort();
+  const years = [...new Set(allData.map(d => d.year))].sort();
+
+  const sf = document.getElementById('stationFilter');
+  sf.innerHTML = '<option value="all">All Stations</option>' +
+    stations.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  const yf = document.getElementById('yearFilter');
+  yf.innerHTML = '<option value="all">All Years</option>' +
+    years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+  sf.onchange = yf.onchange = applyFilters;
+
+  applyFilters();
+  document.getElementById('exportBtn').style.display = 'inline-block';
+}
+
+function applyFilters() {
+  const station = document.getElementById('stationFilter').value;
+  const year = document.getElementById('yearFilter').value;
+
+  filteredData = allData.filter(d => {
+    if (station !== 'all' && d.station !== station) return false;
+    if (year !== 'all' && d.year !== parseInt(year)) return false;
+    return true;
+  });
+
+  updateStats();
+  updateCharts();
+  updateTable();
+
+  document.getElementById('statsBar').style.display = 'grid';
+  document.getElementById('chartGrid').style.display = 'grid';
+}
+
+// ======== Stats ========
+function updateStats() {
+  document.getElementById('sTotalRec').textContent = filteredData.length.toLocaleString();
+  document.getElementById('sStations').textContent = new Set(filteredData.map(d => d.station)).size;
+
+  const dates = filteredData.map(d => d.date);
+  const minD = dates.reduce((a,b) => a < b ? a : b);
+  const maxD = dates.reduce((a,b) => a > b ? a : b);
+  document.getElementById('sDateRange').textContent = `${minD.slice(0,7)} – ${maxD.slice(0,7)}`;
+
+  const totalRain = filteredData.reduce((s, d) => s + d.rainfall, 0);
+  document.getElementById('sTotalRain').textContent = Math.round(totalRain).toLocaleString() + ' mm';
+
+  const max3hr = Math.max(...filteredData.map(d => d.rainfall));
+  document.getElementById('sMax3hr').textContent = max3hr.toFixed(1) + ' mm';
+}
+
+// ======== Canvas Charts ========
+function updateCharts() {
+  drawMonthlyChart();
+  drawDiurnalChart();
+  drawHuffChart();
+  drawSeasonChart();
+  drawAnnualChart();
+}
+
+function getCtx(id) {
+  const canvas = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  return { ctx, w: rect.width, h: rect.height };
+}
+
+function drawMonthlyChart() {
+  const { ctx, w, h } = getCtx('monthlyChart');
+  const pad = { t: 20, r: 30, b: 40, l: 60 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  // Aggregate monthly totals across all data
+  const monthly = Array(12).fill(0);
+  const counts = Array(12).fill(0);
+  filteredData.forEach(d => { monthly[d.month - 1] += d.rainfall; counts[d.month - 1]++; });
+  const avgDaily = monthly.map((v, i) => counts[i] > 0 ? v / (counts[i] / 8) : 0); // per day avg
+
+  const maxVal = Math.max(...avgDaily, 1);
+
+  // Grid
+  ctx.strokeStyle = '#253044';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + ch - (ch * i / 4);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#506080';
+    ctx.font = '11px IBM Plex Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText((maxVal * i / 4).toFixed(0), pad.l - 8, y + 4);
+  }
+
+  // Bars
+  const barW = cw / 12 * 0.65;
+  const gap = cw / 12;
+  for (let i = 0; i < 12; i++) {
+    const x = pad.l + gap * i + (gap - barW) / 2;
+    const barH = (avgDaily[i] / maxVal) * ch;
+    const y = pad.t + ch - barH;
+
+    // Gradient bar
+    const grad = ctx.createLinearGradient(x, y, x, pad.t + ch);
+    grad.addColorStop(0, i >= 5 && i <= 8 ? '#3b82f6' : '#1e3a5f');
+    grad.addColorStop(1, i >= 5 && i <= 8 ? '#1d4ed8' : '#0f1f3a');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#8494ad';
+    ctx.font = '11px IBM Plex Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText(MONTHS[i], pad.l + gap * i + gap / 2, h - pad.b + 18);
+  }
+
+  // Y-axis label
+  ctx.save();
+  ctx.fillStyle = '#506080';
+  ctx.font = '11px IBM Plex Sans';
+  ctx.translate(14, pad.t + ch / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.fillText('Mean Daily (mm)', 0, 0);
+  ctx.restore();
+}
+
+function drawDiurnalChart() {
+  const { ctx, w, h } = getCtx('diurnalChart');
+  const pad = { t: 20, r: 20, b: 40, l: 55 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  const stations = [...new Set(filteredData.map(d => d.station))];
+
+  // Per-station diurnal mean
+  const stationData = {};
+  stations.forEach(st => {
+    stationData[st] = SLOTS.map(slot => {
+      const vals = filteredData.filter(d => d.station === st && d.slot === slot);
+      return vals.length > 0 ? vals.reduce((s, d) => s + d.rainfall, 0) / vals.length : 0;
+    });
+  });
+
+  const allVals = Object.values(stationData).flat();
+  const maxVal = Math.max(...allVals, 0.1);
+
+  // Grid
+  ctx.strokeStyle = '#253044'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + ch - (ch * i / 4);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#506080'; ctx.font = '10px IBM Plex Mono'; ctx.textAlign = 'right';
+    ctx.fillText((maxVal * i / 4).toFixed(1), pad.l - 6, y + 4);
+  }
+
+  // X labels
+  SLOTS.forEach((slot, i) => {
+    ctx.fillStyle = '#506080'; ctx.font = '10px IBM Plex Mono'; ctx.textAlign = 'center';
+    ctx.fillText(slot, pad.l + (i / 7) * cw, h - pad.b + 16);
+  });
+
+  // Lines per station
+  stations.forEach((st, si) => {
+    const vals = stationData[st];
+    ctx.strokeStyle = COLORS[si % COLORS.length];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    vals.forEach((v, i) => {
+      const x = pad.l + (i / 7) * cw;
+      const y = pad.t + ch - (v / maxVal) * ch;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Dots
+    ctx.fillStyle = COLORS[si % COLORS.length];
+    vals.forEach((v, i) => {
+      const x = pad.l + (i / 7) * cw;
+      const y = pad.t + ch - (v / maxVal) * ch;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    });
+  });
+}
+
+function drawHuffChart() {
+  const { ctx, w, h } = getCtx('huffChart');
+  const pad = { t: 20, r: 20, b: 40, l: 55 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  // Count Huff quartile classifications per day
+  const quartileCounts = [0, 0, 0, 0];
+  const dates = [...new Set(filteredData.map(d => d.date))];
+
+  dates.forEach(date => {
+    const dayData = filteredData.filter(d => d.date === date);
+    const total = dayData.reduce((s, d) => s + d.rainfall, 0);
+    if (total < 1.0) return;
+
+    const sorted = dayData.sort((a, b) => a.hour - b.hour);
+    const rain = sorted.map(d => d.rainfall);
+    const n = rain.length;
+    const q = Math.max(1, Math.floor(n / 4));
+    const qSums = [
+      rain.slice(0, q).reduce((a, b) => a + b, 0),
+      rain.slice(q, 2*q).reduce((a, b) => a + b, 0),
+      rain.slice(2*q, 3*q).reduce((a, b) => a + b, 0),
+      rain.slice(3*q).reduce((a, b) => a + b, 0),
+    ];
+    const peak = qSums.indexOf(Math.max(...qSums));
+    quartileCounts[peak]++;
+  });
+
+  const total = quartileCounts.reduce((a, b) => a + b, 1);
+  const pcts = quartileCounts.map(c => c / total * 100);
+  const labels = ['Q1 (First)', 'Q2 (Second)', 'Q3 (Third)', 'Q4 (Fourth)'];
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+  const maxPct = Math.max(...pcts, 10);
+
+  // Horizontal bars
+  const barH = ch / 4 * 0.6;
+  const gap = ch / 4;
+
+  labels.forEach((label, i) => {
+    const y = pad.t + gap * i + (gap - barH) / 2;
+    const barW = (pcts[i] / maxPct) * cw;
+
+    ctx.fillStyle = colors[i];
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(pad.l, y, barW, barH, [0, 6, 6, 0]);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Label
+    ctx.fillStyle = '#d6dce8'; ctx.font = '12px IBM Plex Sans'; ctx.textAlign = 'right';
+    ctx.fillText(label, pad.l - 6, y + barH / 2 + 4);
+
+    // Percentage
+    ctx.fillStyle = '#d6dce8'; ctx.font = '12px IBM Plex Mono'; ctx.textAlign = 'left';
+    ctx.fillText(pcts[i].toFixed(1) + '%', pad.l + barW + 8, y + barH / 2 + 4);
+  });
+}
+
+function drawSeasonChart() {
+  const { ctx, w, h } = getCtx('seasonChart');
+  const cx = w / 2, cy = h / 2, r = Math.min(cx, cy) - 30;
+
+  const seasonTotals = {};
+  Object.keys(SEASONS).forEach(s => seasonTotals[s] = 0);
+  filteredData.forEach(d => {
+    for (const [season, months] of Object.entries(SEASONS)) {
+      if (months.includes(d.month)) { seasonTotals[season] += d.rainfall; break; }
+    }
+  });
+
+  const total = Object.values(seasonTotals).reduce((a, b) => a + b, 1);
+  const colors = ['#f59e0b', '#3b82f6', '#8b5cf6', '#06b6d4'];
+  let angle = -Math.PI / 2;
+
+  Object.entries(seasonTotals).forEach(([season, val], i) => {
+    const sliceAngle = (val / total) * Math.PI * 2;
+    ctx.fillStyle = colors[i];
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + sliceAngle);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Label
+    const mid = angle + sliceAngle / 2;
+    const lx = cx + Math.cos(mid) * r * 0.65;
+    const ly = cy + Math.sin(mid) * r * 0.65;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px IBM Plex Sans';
+    ctx.textAlign = 'center';
+    if (val / total > 0.05) {
+      ctx.fillText(season.split(' ')[0], lx, ly - 6);
+      ctx.font = '11px IBM Plex Mono';
+      ctx.fillText((val / total * 100).toFixed(0) + '%', lx, ly + 10);
+    }
+
+    angle += sliceAngle;
+  });
+}
+
+function drawAnnualChart() {
+  const { ctx, w, h } = getCtx('annualChart');
+  const pad = { t: 20, r: 20, b: 40, l: 60 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  const yearTotals = {};
+  filteredData.forEach(d => { yearTotals[d.year] = (yearTotals[d.year] || 0) + d.rainfall; });
+  const years = Object.keys(yearTotals).sort();
+  const vals = years.map(y => yearTotals[y]);
+  const maxVal = Math.max(...vals, 1);
+
+  // Grid
+  ctx.strokeStyle = '#253044'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + ch - (ch * i / 4);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#506080'; ctx.font = '10px IBM Plex Mono'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * i / 4).toLocaleString(), pad.l - 6, y + 4);
+  }
+
+  const barW = cw / years.length * 0.6;
+  const gap = cw / years.length;
+
+  years.forEach((yr, i) => {
+    const x = pad.l + gap * i + (gap - barW) / 2;
+    const barH = (vals[i] / maxVal) * ch;
+    const y = pad.t + ch - barH;
+
+    ctx.fillStyle = '#10b981';
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = '#8494ad'; ctx.font = '11px IBM Plex Sans'; ctx.textAlign = 'center';
+    ctx.fillText(yr, pad.l + gap * i + gap / 2, h - pad.b + 16);
+  });
+}
+
+// ======== Summary Table ========
+function updateTable() {
+  const stations = [...new Set(filteredData.map(d => d.station))].sort();
+  const tbody = document.getElementById('summaryBody');
+  tbody.innerHTML = '';
+
+  stations.forEach(st => {
+    const stData = filteredData.filter(d => d.station === st);
+    const dailyMap = {};
+    stData.forEach(d => { dailyMap[d.date] = (dailyMap[d.date] || 0) + d.rainfall; });
+    const dailyVals = Object.values(dailyMap);
+    const totalDays = dailyVals.length;
+    const totalRain = dailyVals.reduce((a, b) => a + b, 0);
+    const rainyDays = dailyVals.filter(v => v > 0.1).length;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text);font-family:var(--sans)">${st}</td>
+      <td>${totalDays}</td>
+      <td>${totalRain.toFixed(1)}</td>
+      <td>${(totalRain / Math.max(totalDays, 1)).toFixed(1)}</td>
+      <td>${Math.max(...dailyVals).toFixed(1)}</td>
+      <td>${Math.max(...stData.map(d => d.rainfall)).toFixed(1)}</td>
+      <td>${rainyDays}</td>
+      <td>${(rainyDays / Math.max(totalDays, 1) * 100).toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('emptyMsg').style.display = 'none';
+  document.getElementById('summaryTable').style.display = 'table';
+}
+
+// ======== XLSX Export (custom, no CDN) ========
+function exportXLSX() {
+  // Build CSV as fallback (fully self-contained)
+  let csv = 'Station,Date,Year,Month,Day,Slot,Hour,Rainfall_mm\n';
+  filteredData.forEach(d => {
+    csv += `${d.station},${d.date},${d.year},${d.month},${d.day},${d.slot},${d.hour},${d.rainfall}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bmd_rainfall_long_format.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+
+</body>
+</html>
